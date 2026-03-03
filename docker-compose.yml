@@ -1,0 +1,83 @@
+networks:
+  fraud-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+
+services:
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: fraud-postgres
+    environment:
+      POSTGRES_DB: fraud_db
+      POSTGRES_USER: fraud_user
+      POSTGRES_PASSWORD: fraud_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - fraud-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud_user -d fraud_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ─── ML Service (FastAPI) ───────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ml-service
+    container_name: fraud-ml-service
+    ports:
+      - "8082:8082"
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql://fraud_user:fraud_pass@postgres:5432/fraud_db
+    networks:
+      - fraud-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8082/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─── API Gateway (Spring Boot) ──────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api-gateway
+    container_name: fraud-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/fraud_db
+      - SPRING_DATASOURCE_USERNAME=fraud_user
+      - SPRING_DATASOURCE_PASSWORD=fraud_pass
+      - ML_SERVICE_URL=http://ml-service:8082
+    networks:
+      - fraud-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
