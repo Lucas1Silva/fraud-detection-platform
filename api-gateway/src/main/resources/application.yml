@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: fraud-detection-api-gateway
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fraud_db
+    username: fraud_user
+    password: fraud_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Fraud Detection API Gateway
+    version: 0.1.0
+    sprint: 0
+
+# ML Service integration
+ml-service:
+  base-url: http://localhost:8082
+  timeout-ms: 5000
+
+logging:
+  level:
+    com.frauddetection: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+
+---
+# Docker profile — overrides for container environment
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/fraud_db
+
+ml-service:
+  base-url: http://ml-service:8082
