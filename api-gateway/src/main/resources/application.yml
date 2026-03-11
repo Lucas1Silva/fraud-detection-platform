@@ -1,6 +1,8 @@
 spring:
   application:
     name: fraud-detection-api-gateway
+  profiles:
+    active: dev
 
   datasource:
     url: jdbc:postgresql://localhost:5432/fraud_db
@@ -14,8 +16,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: false
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -43,18 +45,25 @@ info:
   app:
     name: Fraud Detection API Gateway
     version: 0.1.0
-    sprint: 0
+    sprint: 1
 
 # ML Service integration
 ml-service:
-  base-url: http://localhost:8082
+  base-url: ${ML_SERVICE_URL:http://localhost:8082}
   timeout-ms: 5000
+
+# JWT configuration
+jwt:
+  secret: ${JWT_SECRET:fraud-detection-dev-secret-key-minimum-256-bits-long-change-in-prod}
+  expiration-ms: 86400000  # 24 hours
 
 logging:
   level:
     com.frauddetection: DEBUG
     org.springframework.web: INFO
-    org.hibernate.SQL: WARN
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
 
 ---
 # Docker profile — overrides for container environment
@@ -67,4 +76,4 @@ spring:
     url: jdbc:postgresql://postgres:5432/fraud_db
 
 ml-service:
-  base-url: http://ml-service:8082
+  base-url: ${ML_SERVICE_URL:http://ml-service:8082}

@@ -1,38 +1,36 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- init-db.sql
--- Runs once when the PostgreSQL container first starts.
--- Sprint 0: creates extensions and placeholder schema.
--- Sprint 1: full schema via Flyway migrations.
+-- Runs once when the PostgreSQL container first starts (fresh volume only).
+-- Sprint 1: full schema aligned with the JPA Transaction entity.
+-- Hibernate ddl-auto=update handles subsequent schema evolution.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
--- ─── Sprint 0 stub tables ────────────────────────────────────────────────────
--- These will be replaced by Flyway migrations in Sprint 1.
+-- ─── Sprint 1 schema ─────────────────────────────────────────────────────────
+-- Drop Sprint 0 stub tables if present (fresh installs only — volume is new).
+DROP TABLE IF EXISTS fraud_scores;
+DROP TABLE IF EXISTS transactions;
 
-CREATE TABLE IF NOT EXISTS transactions (
-    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id   VARCHAR(100) NOT NULL UNIQUE,
-    amount           NUMERIC(15, 2) NOT NULL,
-    merchant_id      VARCHAR(100) NOT NULL,
-    card_last4       VARCHAR(4) NOT NULL,
-    status           VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE transactions (
+    id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    amount                  NUMERIC(15, 2)  NOT NULL,
+    merchant_name           VARCHAR(255)    NOT NULL,
+    merchant_category       VARCHAR(100)    NOT NULL,
+    card_number_hash        VARCHAR(255)    NOT NULL,
+    transaction_timestamp   TIMESTAMP       NOT NULL DEFAULT NOW(),
+    latitude                DOUBLE PRECISION,
+    longitude               DOUBLE PRECISION,
+    is_fraud                BOOLEAN         NOT NULL DEFAULT FALSE,
+    fraud_score             DOUBLE PRECISION,
+    created_at              TIMESTAMP       NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS fraud_scores (
-    id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id    UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-    fraud_probability NUMERIC(6, 4) NOT NULL,
-    risk_score        SMALLINT NOT NULL CHECK (risk_score BETWEEN 0 AND 100),
-    model_version     VARCHAR(50) NOT NULL,
-    explanation       JSONB,
-    scored_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_transactions_created_at   ON transactions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_transactions_status       ON transactions(status);
-CREATE INDEX IF NOT EXISTS idx_fraud_scores_transaction  ON fraud_scores(transaction_id);
+-- Performance indexes
+CREATE INDEX idx_transactions_created_at       ON transactions(created_at DESC);
+CREATE INDEX idx_transactions_is_fraud         ON transactions(is_fraud);
+CREATE INDEX idx_transactions_fraud_score      ON transactions(fraud_score);
+CREATE INDEX idx_transactions_timestamp        ON transactions(transaction_timestamp DESC);
+CREATE INDEX idx_transactions_merchant_cat     ON transactions(merchant_category);

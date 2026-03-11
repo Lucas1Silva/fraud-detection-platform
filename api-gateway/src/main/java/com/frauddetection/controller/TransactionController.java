@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 
 /**
- * TransactionController — Sprint 0 skeleton.
- * Full transaction ingestion endpoints are wired in Sprint 1.
+ * Health endpoint — kept from Sprint 0 for backward compatibility.
+ * Transaction endpoints live in {@link com.frauddetection.gateway.controller.TransactionController}.
  */
 @RestController
 @RequestMapping("/api")
@@ -18,12 +18,11 @@ public class TransactionController {
 
     @GetMapping("/health")
     public ResponseEntity<HealthResponse> health() {
-        HealthResponse response = new HealthResponse(
+        return ResponseEntity.ok(new HealthResponse(
                 "UP",
                 "fraud-detection-api-gateway",
                 "0.1.0",
                 Instant.now().toString()
-        );
-        return ResponseEntity.ok(response);
+        ));
     }
 }

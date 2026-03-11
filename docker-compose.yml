@@ -67,6 +67,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=fraud_user
       - SPRING_DATASOURCE_PASSWORD=fraud_pass
       - ML_SERVICE_URL=http://ml-service:8082
+      - JWT_SECRET=fraud-detection-docker-secret-key-minimum-256-bits-change-in-prod
     networks:
       - fraud-net
     depends_on:
